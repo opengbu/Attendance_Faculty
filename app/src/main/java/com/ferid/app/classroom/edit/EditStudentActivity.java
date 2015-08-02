@@ -16,19 +16,32 @@
 
 package com.ferid.app.classroom.edit;
 
+import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.Context;
+import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
+import android.provider.DocumentsContract;
+import android.provider.MediaStore;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.daimajia.androidanimations.library.Techniques;
 import com.daimajia.androidanimations.library.YoYo;
@@ -42,7 +55,16 @@ import com.ferid.app.classroom.material_dialog.PromptDialog;
 import com.ferid.app.classroom.model.Classroom;
 import com.ferid.app.classroom.model.Student;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
 
 /**
  * Created by ferid.cafer on 4/15/2015.
@@ -67,6 +89,7 @@ public class EditStudentActivity extends AppCompatActivity {
         Bundle args = getIntent().getExtras();
         if (args != null) {
             classroom = (Classroom) args.getSerializable("classroom");
+
         }
 
         context = this;
@@ -90,7 +113,23 @@ public class EditStudentActivity extends AppCompatActivity {
         startButtonAnimation();
 
         new SelectStudents().execute();
+
+        Context context = getApplicationContext();
+        CharSequence text = "Toast! 2.50";
+        int duration = Toast.LENGTH_SHORT;
+
+        Toast toast = Toast.makeText(context, text, duration);
+        toast.show();
     }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+
+        inflater.inflate(R.menu.menu_import, menu);
+        return true;
+    }
+
 
     /**
      * Create toolbar and set its attributes
@@ -257,11 +296,12 @@ public class EditStudentActivity extends AppCompatActivity {
     /**
      * Closes keyboard for disabling interruption
      */
-    private void closeKeyboard(){
+    private void closeKeyboard() {
         try {
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
-        } catch (Exception e) {}
+        } catch (Exception e) {
+        }
     }
 
     private void closeWindow() {
@@ -281,8 +321,82 @@ public class EditStudentActivity extends AppCompatActivity {
             case android.R.id.home:
                 closeWindow();
                 return true;
+            case R.id.upload:
+
+                Context context = getApplicationContext();
+                CharSequence text = "Button Working";
+                int duration = Toast.LENGTH_SHORT;
+
+                Toast toast = Toast.makeText(context, text, duration);
+                toast.show();
+                upload_file();
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
     }
+
+    private static final int FILE_SELECT_CODE = 0;
+
+    public void upload_file() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("*/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+
+        try {
+            startActivityForResult(
+                    Intent.createChooser(intent, "Select a File to Upload"),
+                    FILE_SELECT_CODE);
+        } catch (android.content.ActivityNotFoundException ex) {
+            // Potentially direct the user to the Market with a Dialog
+            Toast.makeText(this, "Please install a File Manager.",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data){
+        switch (requestCode) {
+            case FILE_SELECT_CODE:
+                if (resultCode == RESULT_OK) {
+                    Uri uri = data.getData();
+                    Context context = getApplicationContext();
+
+                    ArrayList<String> students = new ArrayList<String>();
+                    try {
+                        ContentResolver resolver = getContentResolver();
+                        InputStream in = resolver.openInputStream(uri);
+                        BufferedReader br = new BufferedReader(new InputStreamReader(in,"UTF-8"));
+                        String line = null;
+                        while ((line = br.readLine()) != null) {
+                            Log.d("INFO", "Added "+ line);
+                            students.add(line);
+                        }
+                        for(String temp: students)
+                        {
+                            Log.d("INFO","Found " + temp);
+                        }
+                        DatabaseManager databaseManager = new DatabaseManager(context);
+                        databaseManager.insertStudent_List(classroom.getId(),students);
+
+                        CharSequence text = "Classroom id " + classroom.getId();
+                        int duration = Toast.LENGTH_SHORT;
+
+                        Toast toast = Toast.makeText(context, text, duration);
+                        toast.show();
+
+                    }
+                    catch (Exception e)
+                    {
+                        Log.d("INFO","\n\n"+e.getMessage()+ "\n\n" + e.getLocalizedMessage() + "\n\n"+e.getCause());
+                        Log.d("INFO","\n\n");
+                    }
+                    new SelectStudents().execute();
+
+                }
+                break;
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
 }

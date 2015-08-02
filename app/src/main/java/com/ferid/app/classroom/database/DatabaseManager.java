@@ -21,6 +21,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 
 import com.ferid.app.classroom.model.Attendance;
 import com.ferid.app.classroom.model.Classroom;
@@ -750,5 +751,19 @@ public class DatabaseManager extends SQLiteOpenHelper {
         db.close();
 
         return isSuccessful;
+    }
+
+    public void insertStudent_List(int classroomId, ArrayList<String> names) {
+        for(String item: names) {
+            SQLiteDatabase db = this.getWritableDatabase();
+            ContentValues values = new ContentValues();
+            Log.d("INFO", "Database manager found " + item);
+            values.put("name", item);
+            db.insert("student", null, values);
+            db.close();
+            int studentId = selectLastStudentId();
+            insertClassroomStudent(classroomId, studentId);
+        }
+
     }
 }
